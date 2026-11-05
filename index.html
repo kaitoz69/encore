@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Encore</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="My personal music player">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0e0c0b">
+
+  <!-- Home screen install -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Encore">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Icon sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-logo" viewBox="0 0 100 100">
+      <rect width="100" height="100" rx="22" fill="url(#logo-grad)"/>
+      <g fill="#14100c">
+        <rect x="27" y="25" width="46" height="10.5" rx="5.25"/>
+        <rect x="27" y="44.75" width="31" height="10.5" rx="5.25"/>
+        <rect x="27" y="64.5" width="40" height="10.5" rx="5.25"/>
+        <rect x="27" y="25" width="10.5" height="50" rx="5.25"/>
+      </g>
+    </symbol>
+    <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffc457"/><stop offset="1" stop-color="#f3772a"/>
+    </linearGradient>
+    <symbol id="i-home" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.2 3 10.4V20a1 1 0 0 0 1 1h5.5v-6.5h5V21H20a1 1 0 0 0 1-1v-9.6L12 3.2Z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M10.8 18.1a7.3 7.3 0 1 0 0-14.6 7.3 7.3 0 0 0 0 14.6ZM16.2 16.2 21 21"/></symbol>
+    <symbol id="i-library" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M5 4v16M10.5 4v16M15.5 4.6 20 19.6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M7.5 4.6a1 1 0 0 1 1.5-.86l11.5 7.4a1 1 0 0 1 0 1.72L9 20.26a1 1 0 0 1-1.5-.86V4.6Z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4.4" height="16" rx="1.2" fill="currentColor"/><rect x="13.6" y="4" width="4.4" height="16" rx="1.2" fill="currentColor"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path fill="currentColor" d="M4.5 5.2a1 1 0 0 1 1.55-.84L16 10.8V5a1 1 0 0 1 1-1h1.5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H17a1 1 0 0 1-1-1v-5.8L6.05 19.64A1 1 0 0 1 4.5 18.8V5.2Z"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><path fill="currentColor" d="M19.5 5.2a1 1 0 0 0-1.55-.84L8 10.8V5a1 1 0 0 0-1-1H5.5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1H7a1 1 0 0 0 1-1v-5.8l9.95 6.44a1 1 0 0 0 1.55-.84V5.2Z"/></symbol>
+    <symbol id="i-shuffle" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 7h3.2c1.5 0 2.9.8 3.7 2l5.2 6c.8 1.2 2.2 2 3.7 2H21M3 17h3.2c1.5 0 2.9-.8 3.7-2M14.1 9.2l1-1.2c.8-1.2 2.2-2 3.7-2H21M18.5 3.5 21 6l-2.5 2.5M18.5 14.5 21 17l-2.5 2.5"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17.5 2.5 21 6l-3.5 3.5M3 11.5V10a4 4 0 0 1 4-4h14M6.5 21.5 3 18l3.5-3.5M21 12.5V14a4 4 0 0 1-4 4H3"/></symbol>
+    <symbol id="i-repeat-one" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17.5 2.5 21 6l-3.5 3.5M3 11.5V10a4 4 0 0 1 4-4h14M6.5 21.5 3 18l3.5-3.5M21 12.5V14a4 4 0 0 1-4 4H3M11.2 10.6l1.4-.9v4.6"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20.3s-8.5-5-8.5-11A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.5 2.9c0 6-8.5 11-8.5 11Z"/></symbol>
+    <symbol id="i-heart-fill" viewBox="0 0 24 24"><path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20.3s-8.5-5-8.5-11A4.8 4.8 0 0 1 12 6.4a4.8 4.8 0 0 1 8.5 2.9c0 6-8.5 11-8.5 11Z"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="m5 9 7 7 7-7"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path fill="currentColor" d="M20 3.2v12.3a3.5 3.5 0 1 1-2-3.16V7.4L10 9.2v8.3a3.5 3.5 0 1 1-2-3.16V5.3a1 1 0 0 1 .78-.98l10-2.1A1 1 0 0 1 20 3.2Z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5.2l3.4 2"/></symbol>
+  </svg>
+
+  <div id="app">
+    <main id="view" tabindex="-1"></main>
+
+    <div id="dock">
+      <div id="mini" data-action="open-np" role="button" tabindex="0" aria-label="Open now playing" hidden>
+        <div id="mini-cover" class="mini-cover"></div>
+        <div class="mini-text">
+          <div id="mini-title" class="mini-title" dir="auto"></div>
+          <div id="mini-artist" class="mini-artist" dir="auto"></div>
+        </div>
+        <button class="icon-btn js-like" data-action="like-current" aria-label="Like"><svg class="icon"><use href="#i-heart"/></svg></button>
+        <button class="icon-btn js-play" data-action="toggle-play" aria-label="Play"><svg class="icon icon-lg"><use href="#i-play"/></svg></button>
+        <div id="mini-progress" class="mini-progress"><div id="mini-progress-fill"></div></div>
+      </div>
+
+      <nav id="tabs" aria-label="Main">
+        <a href="#/" class="tab" data-action="tab" data-tab="home"><svg class="icon"><use href="#i-home"/></svg><span>Home</span></a>
+        <a href="#/search" class="tab" data-action="tab" data-tab="search"><svg class="icon"><use href="#i-search"/></svg><span>Search</span></a>
+        <a href="#/library" class="tab" data-action="tab" data-tab="library"><svg class="icon"><use href="#i-library"/></svg><span>Library</span></a>
+      </nav>
+    </div>
+  </div>
+
+  <section id="np" aria-label="Now playing" inert>
+    <div id="np-swipe">
+      <header class="np-top">
+        <button class="icon-btn" data-action="close-np" aria-label="Close"><svg class="icon"><use href="#i-down"/></svg></button>
+        <button class="np-context" data-action="open-context">
+          <span class="np-context-label">Playing from</span>
+          <span id="np-context-title" class="np-context-title" dir="auto"></span>
+        </button>
+        <span class="icon-btn-spacer"></span>
+      </header>
+      <div class="np-art-wrap"><div id="np-art" class="np-art"></div></div>
+    </div>
+
+    <div class="np-info">
+      <div class="np-text">
+        <h2 id="np-title" dir="auto"></h2>
+        <p id="np-artist" dir="auto"></p>
+      </div>
+      <button class="icon-btn js-like" data-action="like-current" aria-label="Like"><svg class="icon icon-lg"><use href="#i-heart"/></svg></button>
+    </div>
+
+    <div id="seek" class="seek" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+      <div class="seek-track"><div id="seek-fill" class="seek-fill"></div><div id="seek-thumb" class="seek-thumb"></div></div>
+    </div>
+    <div class="seek-times"><span id="time-now">0:00</span><span id="time-total">0:00</span></div>
+
+    <div class="np-controls">
+      <button class="icon-btn toggle" id="btn-shuffle" data-action="toggle-shuffle" aria-label="Shuffle" aria-pressed="false"><svg class="icon"><use href="#i-shuffle"/></svg></button>
+      <button class="icon-btn" data-action="prev" aria-label="Previous"><svg class="icon icon-xl"><use href="#i-prev"/></svg></button>
+      <button class="np-play js-play" data-action="toggle-play" aria-label="Play"><svg class="icon icon-xl"><use href="#i-play"/></svg></button>
+      <button class="icon-btn" data-action="next" aria-label="Next"><svg class="icon icon-xl"><use href="#i-next"/></svg></button>
+      <button class="icon-btn toggle" id="btn-repeat" data-action="cycle-repeat" aria-label="Repeat: off" aria-pressed="false"><svg class="icon"><use href="#i-repeat"/></svg></button>
+    </div>
+  </section>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <!-- One shared element: iOS only keeps audio going on the lock screen if the same element stays in use. -->
+  <audio id="audio" preload="metadata" playsinline></audio>
+
+  <script src="app.js"></script>
+</body>
+</html>
