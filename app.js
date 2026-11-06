@@ -150,7 +150,8 @@ async function loadLibrary() {
     } else if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     } else {
-      indexLibrary(await res.json());
+      libraryText = await res.text();
+      indexLibrary(JSON.parse(libraryText));
     }
     lib.status = 'ready';
   } catch (err) {
@@ -159,6 +160,62 @@ async function loadLibrary() {
   }
   restorePlayer();
   render();
+}
+
+// Picks up newly uploaded songs without a reload: when the app comes back to the
+// foreground, and every minute while it's on screen. Playback is left untouched.
+const REFRESH_EVERY_MS = 60 * 1000;
+const REFRESH_MIN_GAP_MS = 15 * 1000;
+let libraryText = null;
+let lastRefresh = 0;
+
+async function refreshLibrary() {
+  if (document.visibilityState !== 'visible') return;
+  if (Date.now() - lastRefresh < REFRESH_MIN_GAP_MS) return;
+  lastRefresh = Date.now();
+
+  // After a failed first load, a normal load also clears the error screen.
+  if (lib.status === 'error') {
+    loadLibrary();
+    return;
+  }
+  if (lib.status !== 'ready') return;
+
+  let text;
+  let data;
+  try {
+    const res = await fetch('songs.json', { cache: 'no-cache' });
+    if (!res.ok) return;
+    text = await res.text();
+    data = JSON.parse(text);
+  } catch {
+    return; // offline or mid-deploy: try again next time
+  }
+  if (text === libraryText) return;
+
+  libraryText = text;
+  indexLibrary(data);
+  relinkPlayer();
+
+  const top = viewEl.scrollTop;
+  if ($('#search-input')) renderSearchResults(); // keeps the keyboard and typed text
+  else render();
+  viewEl.scrollTop = top;
+}
+
+// The library was rebuilt, so point the player at the new track objects.
+// A song that was removed keeps playing, and the queue moves on without it.
+function relinkPlayer() {
+  player.base = player.base.filter((id) => lib.byId.has(id));
+  player.queue = player.queue.filter((id) => lib.byId.has(id));
+  if (!player.track) return;
+  const track = lib.byId.get(player.track.id);
+  player.pos = player.queue.indexOf(player.track.id);
+  if (track) {
+    player.track = track;
+    updateTrackUi();
+    updateMediaSession();
+  }
 }
 
 function collection(id) {
@@ -1049,7 +1106,10 @@ window.addEventListener('hashchange', onRouteChange);
 window.addEventListener('pagehide', () => saveState(true));
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') saveState(true);
+  else refreshLibrary();
 });
+window.addEventListener('online', refreshLibrary);
+setInterval(refreshLibrary, REFRESH_EVERY_MS);
 
 setupAudioEvents();
 setupMediaSession();
