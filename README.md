@@ -30,4 +30,10 @@ Songs stream over the internet, so it needs a connection to play.
 
 That's all. The song list rebuilds by itself, and the album appears in the app a couple of minutes later. To add songs to an existing album, open its folder in `music` and upload them there.
 
-See [`music/README.md`](music/README.md) for formats and how titles and order work.
+## Artist names and covers
+
+- **Artist:** name the file `Artist - Song.mp3`, or add an `artist.txt` containing the name to give a whole folder one artist.
+- **Album cover:** add `cover.jpg` to the folder.
+- **Song cover:** add an image with the same name as the song, like `Artist - Song.jpg`.
+
+See [`music/README.md`](music/README.md) for the details.

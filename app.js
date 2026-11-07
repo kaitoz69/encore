@@ -128,10 +128,11 @@ function indexLibrary(data) {
         id: t.path,
         src: mediaUrl(t.path),
         title: t.title,
-        artist: t.artist || album.artist || 'Unknown artist',
+        artist: t.artist || (album.artist !== 'Various Artists' && album.artist) || 'Unknown artist',
         duration: t.duration,
         album,
-        cover: album.cover,
+        cover: t.cover || album.cover,
+        hasOwnCover: !!t.cover,
       };
       lib.tracks.push(track);
       lib.byId.set(track.id, track);
@@ -330,7 +331,7 @@ function homeView() {
   </div>`;
 }
 
-function trackRow(track, index, { numbered = false } = {}) {
+function trackRow(track, index, { numbered = false, showAlbum = true } = {}) {
   const lead = numbered
     ? `<div class="row-num"><span class="num">${index + 1}</span><span class="eq"><i></i><i></i><i></i></span></div>`
     : `<div class="row-thumb">${coverHtml(track.cover, track.album.title)}</div>`;
@@ -339,19 +340,19 @@ function trackRow(track, index, { numbered = false } = {}) {
     ${lead}
     <div class="row-text">
       <div class="row-title" dir="auto">${esc(track.title)}</div>
-      <div class="row-sub" dir="auto">${esc(numbered ? track.artist : `${track.artist} · ${track.album.title}`)}</div>
+      <div class="row-sub" dir="auto">${esc(showAlbum ? `${track.artist} · ${track.album.title}` : track.artist)}</div>
     </div>
     <div class="row-time">${fmtTime(track.duration)}</div>
     <button class="icon-btn js-row-like ${on ? 'is-on' : ''}" data-action="like-row" aria-label="${on ? 'Unlike' : 'Like'} ${esc(track.title)}" aria-pressed="${on}">${icon(on ? 'heart-fill' : 'heart')}</button>
   </div>`;
 }
 
-function trackPage({ context, coverMarkup, title, artist, tracks, numbered, emptyText, tintFrom }) {
+function trackPage({ context, coverMarkup, title, artist, tracks, numbered, showAlbum, emptyText, tintFrom }) {
   pageTracks = tracks;
   pageContext = context;
   const meta = [plural(tracks.length, 'song'), fmtTotal(tracks)].filter(Boolean).join(' · ');
   const list = tracks.length
-    ? tracks.map((t, i) => trackRow(t, i, { numbered })).join('')
+    ? tracks.map((t, i) => trackRow(t, i, { numbered, showAlbum })).join('')
     : `<div class="empty"><p>${esc(emptyText || 'Nothing here yet.')}</p></div>`;
   const actions = tracks.length
     ? `<div class="hero-actions">
@@ -392,7 +393,8 @@ function albumView(id) {
     title: album.title,
     artist: album.artist,
     tracks: album.tracks,
-    numbered: true,
+    numbered: !album.tracks.some((t) => t.hasOwnCover), // show song covers when there are any
+    showAlbum: false,
     tintFrom: album.cover,
   });
 }

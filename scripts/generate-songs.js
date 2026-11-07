@@ -3,9 +3,16 @@
 //
 // Layout:  music/<Album name>/cover.jpg
 //          music/<Album name>/01 - Song title.mp3
-// Album title = folder name. Song title, artist and track number come from the
-// file's tags when it has them, otherwise from the file name. Loose files directly
-// in music/ are collected into an album called "Singles".
+// Album title = folder name. Song title and track number come from the file's tags
+// when it has them, otherwise from the file name. Loose files directly in music/
+// are collected into an album called "Singles".
+//
+// Artist, strongest first:  artist.txt in the album folder (whole album)
+//                           the file's tags
+//                           the file name, "Artist - Title.mp3"
+// Covers:  Song title.jpg next to Song title.mp3 is that song's cover.
+//          cover.jpg, or any other image in the folder, is the album's cover.
+//          With no album image, the first song cover is used.
 
 'use strict';
 const fs = require('fs');
@@ -17,6 +24,7 @@ const OUTPUT = path.join(ROOT, 'songs.json');
 
 const AUDIO_EXT = new Set(['.mp3', '.m4a', '.aac', '.wav', '.flac']);
 const UNSUPPORTED_EXT = new Set(['.ogg', '.oga', '.opus', '.wma', '.aiff', '.aif', '.alac', '.ape']);
+const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const COVER_NAMES = ['cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp'];
 
 const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
@@ -259,14 +267,20 @@ function readMetadata(file) {
 
 // ---------------------------------------------------------------- Scan
 
-function titleFromFilename(name) {
-  return (
-    path
-      .basename(name, path.extname(name))
-      .replace(/^\s*\d{1,3}\s*[-._)]*\s+/, '') // "01 - Song", "1. Song", "03 Song"
-      .replace(/_/g, ' ')
-      .trim() || name
-  );
+// "01 - Katy Perry - Firework (Official Video) - 320.mp3" -> Katy Perry / Firework
+function parseFilename(name) {
+  const cleaned = path
+    .basename(name, path.extname(name))
+    .normalize('NFKC') // decorative Unicode letters become plain ones
+    .replace(/^\s*\d{1,3}\s*[-._)]*\s+/, '') // "01 - Song", "1. Song", "03 Song"
+    .replace(/_/g, ' ')
+    .replace(/\s*[([](official\s*(music\s*|lyrics?\s*|audio\s*)?(video|audio)?|lyrics?(\s*video)?|audio|hd|hq|4k|visuali[sz]er)[)\]]/gi, '')
+    .replace(/\s+-\s+\d{2,3}(\s*kbps)?\s*$/i, '') // "- 320" left by download tools
+    .replace(/\s+/g, ' ')
+    .trim();
+  const split = cleaned.indexOf(' - ');
+  if (split > 0) return { artist: cleaned.slice(0, split).trim(), title: cleaned.slice(split + 3).trim() || name };
+  return { artist: null, title: cleaned || name };
 }
 
 function trackNumberFromFilename(name) {
@@ -278,15 +292,18 @@ function toWebPath(file) {
   return path.relative(ROOT, file).split(path.sep).join('/');
 }
 
-function scanTrack(file) {
+function scanTrack(file, albumArtist, images) {
   const name = path.basename(file);
   const meta = readMetadata(file);
+  const parsed = parseFilename(name);
+  const stem = path.basename(file, path.extname(file)).toLowerCase();
   const track = {
     path: toWebPath(file),
-    title: meta.title || titleFromFilename(name),
-    artist: meta.artist || null,
+    title: meta.title || parsed.title,
+    artist: albumArtist || meta.artist || parsed.artist,
     track: Number.isFinite(meta.track) && meta.track > 0 ? meta.track : trackNumberFromFilename(name),
     duration: Number.isFinite(meta.duration) ? Math.round(meta.duration) : null,
+    cover: images.get(stem) || null,
   };
   return track;
 }
@@ -300,12 +317,13 @@ function sortTracks(tracks) {
   });
 }
 
-function mostCommon(values) {
+function albumArtistFrom(values) {
+  const known = values.filter(Boolean);
   const counts = new Map();
-  for (const v of values) if (v) counts.set(v, (counts.get(v) || 0) + 1);
+  for (const v of known) counts.set(v, (counts.get(v) || 0) + 1);
   const ranked = [...counts].sort((a, b) => b[1] - a[1]);
   if (!ranked.length) return null;
-  return ranked.length > 1 && ranked[0][1] === 1 ? 'Various Artists' : ranked[0][0];
+  return ranked[0][1] / known.length >= 0.6 ? ranked[0][0] : 'Various Artists';
 }
 
 function listAudio(dir) {
@@ -324,18 +342,47 @@ function listAudio(dir) {
   return files;
 }
 
-function findCover(dir) {
+// Images in a folder, keyed by lowercase name without the extension.
+function listImages(dir) {
+  const images = new Map();
+  const files = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => e.name);
+  for (const name of files.sort(collator.compare)) {
+    if (!IMAGE_EXT.has(path.extname(name).toLowerCase())) continue;
+    const stem = path.basename(name, path.extname(name)).toLowerCase();
+    if (!images.has(stem)) images.set(stem, toWebPath(path.join(dir, name)));
+  }
+  return images;
+}
+
+function findAlbumCover(dir, images, audioFiles, tracks) {
   const entries = fs.readdirSync(dir);
   for (const wanted of COVER_NAMES) {
     const hit = entries.find((e) => e.toLowerCase() === wanted);
     if (hit) return toWebPath(path.join(dir, hit));
   }
-  return null;
+  const songStems = new Set(audioFiles.map((f) => path.basename(f, path.extname(f)).toLowerCase()));
+  for (const [stem, image] of images) if (!songStems.has(stem)) return image;
+  return tracks.find((t) => t.cover)?.cover || null;
 }
 
-function buildAlbum(id, title, cover, files) {
-  const tracks = sortTracks(files.map(scanTrack));
-  return { id, title, artist: mostCommon(tracks.map((t) => t.artist)), cover, tracks };
+function readAlbumArtist(dir) {
+  const hit = fs.readdirSync(dir).find((e) => e.toLowerCase() === 'artist.txt');
+  if (!hit) return null;
+  const firstLine = fs.readFileSync(path.join(dir, hit), 'utf8').replace(/^﻿/, '').split(/\r?\n/)[0];
+  return firstLine.trim() || null;
+}
+
+function buildAlbum(id, title, dir, files) {
+  const albumArtist = readAlbumArtist(dir);
+  const images = listImages(dir);
+  const tracks = sortTracks(files.map((f) => scanTrack(f, albumArtist, images)));
+  return {
+    id,
+    title,
+    artist: albumArtist || albumArtistFrom(tracks.map((t) => t.artist)),
+    cover: findAlbumCover(dir, images, files, tracks),
+    tracks,
+  };
 }
 
 function scan() {
@@ -350,14 +397,14 @@ function scan() {
       console.warn(`  ! skipped music/${entry.name} (no playable audio files)`);
       continue;
     }
-    const cover = findCover(dir);
-    if (!cover) console.warn(`  ! music/${entry.name} has no cover.jpg`);
-    albums.push(buildAlbum(entry.name, entry.name, cover, files));
+    const album = buildAlbum(entry.name, entry.name, dir, files);
+    if (!album.cover) console.warn(`  ! music/${entry.name} has no cover image`);
+    albums.push(album);
   }
   albums.sort((a, b) => collator.compare(a.title, b.title));
 
   const loose = listAudio(MUSIC_DIR);
-  if (loose.length) albums.push(buildAlbum('__singles__', 'Singles', null, loose));
+  if (loose.length) albums.push(buildAlbum('__singles__', 'Singles', MUSIC_DIR, loose));
   return albums;
 }
 
